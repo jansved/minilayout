@@ -1,0 +1,65 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MiniLayout.App.ViewModels"
+        xmlns:views="using:MiniLayout.App.Views"
+        x:Class="MiniLayout.App.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="MiniLayout - C++20 / .NET 10 / Python"
+        Width="900" Height="600"
+        WindowStartupLocation="CenterScreen">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- Top Toolbar -->
+        <Border Grid.Row="0" Background="#202028" Padding="12,10" BorderBrush="#30303c" BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <Button Content="Run Python Script"
+                        Click="OnRunPythonClicked"
+                        Background="#2980b9" Foreground="White"
+                        FontWeight="SemiBold" Padding="12,6" />
+                <Button Content="Add Box"
+                        Click="OnAddBoxClicked"
+                        Background="#27ae60" Foreground="White"
+                        FontWeight="SemiBold" Padding="12,6" />
+                <Button Content="Reset Scene"
+                        Click="OnResetSceneClicked"
+                        Background="#7f8c8d" Foreground="White"
+                        FontWeight="SemiBold" Padding="12,6" />
+
+                <Separator Width="1" Height="20" Background="#404050" Margin="6,0" />
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="16">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Width="12" Height="12" Background="#2ecc71" CornerRadius="2" VerticalAlignment="Center" />
+                        <TextBlock Text="Clear" Foreground="#cccccc" VerticalAlignment="Center" FontSize="12" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Width="12" Height="12" Background="#e74c3c" CornerRadius="2" VerticalAlignment="Center" />
+                        <TextBlock Text="Colliding" Foreground="#cccccc" VerticalAlignment="Center" FontSize="12" />
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Center 2D Layout Canvas -->
+        <views:LayoutCanvas Grid.Row="1"
+                            Components="{Binding Components}"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch" />
+
+        <!-- Bottom Status Bar -->
+        <Border Grid.Row="2" Background="#181820" Padding="12,8" BorderBrush="#30303c" BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="{Binding StatusText}"
+                           Foreground="#bdc3c7"
+                           FontSize="12"
+                           VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1"
+                           Text="Engine: C++20 (GLM/spdlog) | .NET 10 | PythonNet"
+                           Foreground="#7f8c8d"
+                           FontSize="11"
+                           VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

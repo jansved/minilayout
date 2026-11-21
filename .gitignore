@@ -1,0 +1,38 @@
+# CMake / Native build
+build/
+**/build/
+compile_commands.json
+**/compile_commands.json
+vcpkg_installed/
+**/vcpkg_installed/
+*.dylib
+*.so
+*.dll
+
+# .NET / C#
+bin/
+**/bin/
+obj/
+**/obj/
+*.user
+*.suo
+.nuget/
+**/.nuget/
+packages/
+**/packages/
+*.nupkg
+*.nupkg.sha512
+
+# Python
+__pycache__/
+*.pyc
+
+# IDEs & OS
+.DS_Store
+**/.DS_Store
+.idea/
+.vscode/
+.local/
+
+# Local CLI / library artifacts
+Library/

@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  workflow_dispatch:
+#    inputs:
+#      create_release:
+#        description: 'Create a GitHub Release if tests succeed'
+#        required: false
+#        type: boolean
+#        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & Test (macOS ARM64)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build tools & CycloneDX CLI
+        run: |
+          command -v ninja >/dev/null 2>&1 || brew install ninja
+          dotnet tool install --global CycloneDX || true
+          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+
+      - name: Setup vcpkg
+        run: |
+          if [ -n "${VCPKG_INSTALLATION_ROOT:-}" ] && [ -d "${VCPKG_INSTALLATION_ROOT}" ]; then
+            echo "VCPKG_ROOT=${VCPKG_INSTALLATION_ROOT}" >> $GITHUB_ENV
+          elif [ -d "$HOME/tools/vcpkg" ]; then
+            echo "VCPKG_ROOT=$HOME/tools/vcpkg" >> $GITHUB_ENV
+          else
+            mkdir -p "$HOME/tools"
+            git clone https://github.com/microsoft/vcpkg.git "$HOME/tools/vcpkg"
+            "$HOME/tools/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+            echo "VCPKG_ROOT=$HOME/tools/vcpkg" >> $GITHUB_ENV
+          fi
+
+      - name: Cache vcpkg binary cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/vcpkg
+          key: ${{ runner.os }}-vcpkg-${{ hashFiles('src/native-engine/vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'global.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Execute Build, Test & SBOM Pipeline
+        run: |
+          chmod +x scripts/build_and_sbom.sh
+          ./scripts/build_and_sbom.sh
+
+      - name: Upload CycloneDX SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyclonedx-sbom
+          path: sbom.cdx.json
+          if-no-files-found: error
+
+      - name: Upload MiniLayout App Binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: minilayout-macos-arm64
+          path: |
+            src/MiniLayout.App/bin/Release/net10.0/
+          if-no-files-found: error
+
+  # ============================================================================
+  # Optional / Gated Release Job
+  # This job is isolated and self-contained; it can be cleanly omitted or deleted
+  # when publishing to a public repository without affecting the CI build pipeline.
+  # ============================================================================
+  # release:
+  #   name: Publish Release (Gated)
+  #   needs: build-and-test
+  #   if: github.event_name == 'workflow_dispatch' && inputs.create_release == true
+  #   runs-on: macos-latest
+  #   permissions:
+  #     contents: write
+  #
+  #   steps:
+  #     - name: Download CycloneDX SBOM
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: cyclonedx-sbom
+  #         path: ./artifacts/sbom
+  #
+  #     - name: Download App Binaries
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: minilayout-macos-arm64
+  #         path: ./artifacts/app
+  #
+  #     - name: Package Release Assets
+  #       run: |
+  #         mkdir -p release-pkg
+  #         tar -czf release-pkg/MiniLayout-macos-arm64.tar.gz -C ./artifacts/app .
+  #         cp ./artifacts/sbom/sbom.cdx.json release-pkg/sbom.cdx.json
+  #         ls -lh release-pkg/
+  #
+  #     - name: Create GitHub Release
+  #       uses: softprops/action-gh-release@v2
+  #       with:
+  #         tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v1.0.0-build.{0}', github.run_number) }}
+  #         name: ${{ github.ref_type == 'tag' && github.ref_name || format('MiniLayout v1.0.0 (Build {0})', github.run_number) }}
+  #         body: |
+  #           ### MiniLayout Automated Release
+  #
+  #           - **Commit**: `${{ github.sha }}`
+  #           - **Platform**: macOS (Apple Silicon ARM64)
+  #           - **Contents**:
+  #             - `MiniLayout-macos-arm64.tar.gz`: Compiled desktop application and native C++20 engine shared library.
+  #             - `sbom.cdx.json`: CycloneDX 1.7 Software Bill of Materials (covering NuGet packages and native vcpkg dependencies).
+  #         files: |
+  #           release-pkg/MiniLayout-macos-arm64.tar.gz
+  #           release-pkg/sbom.cdx.json
+  #         draft: false
+  #         prerelease: false
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
