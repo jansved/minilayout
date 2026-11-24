@@ -34,5 +34,10 @@ __pycache__/
 .vscode/
 .local/
 
+# clangd / LSP cache
+.cache/clangd/
+**/.cache/clangd/
+.clangd/
+
 # Local CLI / library artifacts
 Library/
